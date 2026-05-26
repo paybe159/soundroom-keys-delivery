@@ -64,13 +64,7 @@ export default function Home() {
       <main style={s.main}>
         <header style={s.header}>
           <div style={s.logoWrap}>
-            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-              <rect x="0" y="11" width="4" height="6" rx="2" fill="#4F8EF7" opacity=".5"/>
-              <rect x="5.5" y="7.5" width="4" height="13" rx="2" fill="#4F8EF7" opacity=".75"/>
-              <rect x="11" y="2" width="5" height="24" rx="2.5" fill="#4F8EF7"/>
-              <rect x="17.5" y="6" width="4" height="16" rx="2" fill="#4F8EF7" opacity=".8"/>
-              <rect x="23" y="10" width="5" height="8" rx="2" fill="#4F8EF7" opacity=".5"/>
-            </svg>
+            <svg width="28" height="28" viewBox="0 0 1777 1694" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M888.594 116L889.489 1577.81" stroke="#4C9BFF" stroke-width="232" stroke-linecap="round" stroke-linejoin="round"/><path d="M498 404L498 1290" stroke="#4C9BFF" stroke-width="232" stroke-linecap="round" stroke-linejoin="round"/><path d="M1276 404L1276 1290" stroke="#4C9BFF" stroke-width="232" stroke-linecap="round" stroke-linejoin="round"/><path d="M116 739L116 955" stroke="#4C9BFF" stroke-width="232" stroke-linecap="round" stroke-linejoin="round"/><path d="M1661 739L1661 955" stroke="#4C9BFF" stroke-width="232" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </div>
           <span style={s.brandText}>Sound<span style={{color:'#4F8EF7'}}>Room</span></span>
         </header>
