@@ -1,0 +1,24 @@
+@import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700&family=Inter:wght@300;400;500;600&display=swap');
+@import url('https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.x/dist/tabler-icons.min.css');
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #F5F6FA;
+  color: #1A1A2E;
+  min-height: 100vh;
+}
+
+::selection {
+  background: rgba(79, 142, 247, 0.18);
+}
