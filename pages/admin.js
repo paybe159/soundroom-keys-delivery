@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Head from 'next/head'
 
 const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'soundroom2024'
@@ -13,6 +13,7 @@ export default function Admin() {
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState('')
   const [tab, setTab] = useState('add')
+  const [editId, setEditId] = useState(null)
 
   function handleLogin() {
     if (pw === ADMIN_PASSWORD) { setAuthed(true); loadCodes() }
@@ -27,18 +28,42 @@ export default function Admin() {
     setLoading(false)
   }
 
+  function startEdit(c) {
+    setForm({
+      code: c.code,
+      product_name: c.product_name || '',
+      product_type: c.product_type || '',
+      delivery_type: c.delivery_type || 'text',
+      content: c.content || '',
+      download_url: c.download_url || '',
+      file_name: c.file_name || '',
+      instructions: c.instructions || '',
+    })
+    setEditId(c.id)
+    setTab('add')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function cancelEdit() {
+    setEditId(null)
+    setForm({ code: '', product_name: '', product_type: '', delivery_type: 'text', content: '', download_url: '', file_name: '', instructions: '' })
+  }
+
   async function handleSave() {
     if (!form.code || !form.product_name) { setSaveMsg('Заполните код и название товара'); return }
     setSaving(true)
-    const res = await fetch('/api/admin/add-code', {
+    const url = editId ? '/api/admin/update-code' : '/api/admin/add-code'
+    const body = editId ? { ...form, id: editId } : form
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
+      body: JSON.stringify(body),
     })
     const data = await res.json()
     if (res.ok) {
-      setSaveMsg('✓ Код добавлен!')
+      setSaveMsg(editId ? '✓ Код обновлён!' : '✓ Код добавлен!')
       setForm({ code: '', product_name: '', product_type: '', delivery_type: 'text', content: '', download_url: '', file_name: '', instructions: '' })
+      setEditId(null)
       loadCodes()
     } else {
       setSaveMsg('Ошибка: ' + (data.error || 'что-то пошло не так'))
@@ -58,10 +83,7 @@ export default function Admin() {
   return (
     <>
       <Head><title>SoundRoom Admin</title><meta name="robots" content="noindex" /></Head>
-      <div style={s.bg}>
-        <div style={s.bgGrid} />
-        <div style={{...s.bgOrb, ...s.bgOrbA}} />
-      </div>
+      <div style={s.bg}><div style={s.bgGrid}/><div style={{...s.bgOrb,...s.bgOrbA}}/></div>
       <main style={s.main}>
         <header style={s.header}>
           <div style={s.logoWrap}>
@@ -73,22 +95,28 @@ export default function Admin() {
 
         <div style={s.card}>
           <div style={s.tabs}>
-            <button style={{...s.tabBtn, ...(tab==='add'?s.tabBtnActive:{})}} onClick={()=>setTab('add')}>
-              <i className="ti ti-plus" /> Добавить код
+            <button style={{...s.tabBtn,...(tab==='add'?s.tabBtnActive:{})}} onClick={()=>setTab('add')}>
+              <i className={`ti ti-${editId ? 'edit' : 'plus'}`} /> {editId ? 'Редактировать' : 'Добавить код'}
             </button>
-            <button style={{...s.tabBtn, ...(tab==='list'?s.tabBtnActive:{})}} onClick={()=>{setTab('list');loadCodes()}}>
+            <button style={{...s.tabBtn,...(tab==='list'?s.tabBtnActive:{})}} onClick={()=>{setTab('list');loadCodes()}}>
               <i className="ti ti-list" /> Все коды ({codes.length})
             </button>
           </div>
 
           {tab === 'add' && (
             <div style={s.cardBody}>
+              {editId && (
+                <div style={s.editBanner}>
+                  <i className="ti ti-edit" style={{fontSize:15}} />
+                  Редактирование кода <strong>{form.code}</strong>
+                  <button style={s.cancelBtn} onClick={cancelEdit}>Отмена</button>
+                </div>
+              )}
+
               <Row label="Код активации">
                 <div style={{display:'flex',gap:8}}>
-                  <input style={s.input} value={form.code} onChange={e=>setForm(f=>({...f,code:e.target.value.toUpperCase()}))} placeholder="SR-XXXX-XXXX-XXXX" />
-                  <button style={s.genBtn} onClick={generateCode} title="Сгенерировать">
-                    <i className="ti ti-refresh" />
-                  </button>
+                  <input style={s.input} value={form.code} onChange={e=>setForm(f=>({...f,code:e.target.value.toUpperCase()}))} placeholder="SR-XXXX-XXXX-XXXX" disabled={!!editId} />
+                  {!editId && <button style={s.genBtn} onClick={generateCode} title="Сгенерировать"><i className="ti ti-refresh" /></button>}
                 </div>
               </Row>
               <Row label="Название товара">
@@ -99,12 +127,8 @@ export default function Admin() {
               </Row>
               <Row label="Способ выдачи">
                 <div style={s.segmented}>
-                  <button style={{...s.segBtn, ...(form.delivery_type==='text'?s.segBtnActive:{})}} onClick={()=>setForm(f=>({...f,delivery_type:'text'}))}>
-                    Текст / ключ
-                  </button>
-                  <button style={{...s.segBtn, ...(form.delivery_type==='file'?s.segBtnActive:{})}} onClick={()=>setForm(f=>({...f,delivery_type:'file'}))}>
-                    Файл / ссылка
-                  </button>
+                  <button style={{...s.segBtn,...(form.delivery_type==='text'?s.segBtnActive:{})}} onClick={()=>setForm(f=>({...f,delivery_type:'text'}))}>Текст / ключ</button>
+                  <button style={{...s.segBtn,...(form.delivery_type==='file'?s.segBtnActive:{})}} onClick={()=>setForm(f=>({...f,delivery_type:'file'}))}>Файл / ссылка</button>
                 </div>
               </Row>
 
@@ -125,18 +149,17 @@ export default function Admin() {
               )}
 
               <Row label="Инструкция по активации (необязательно)">
-                <textarea style={s.textarea} value={form.instructions} onChange={e=>setForm(f=>({...f,instructions:e.target.value}))} placeholder={"Например:\n1. Скачайте и запустите инсталлятор\n2. При активации введите ключ\n3. Перезапустите DAW"} rows={5} />
+                <textarea style={s.textarea} value={form.instructions} onChange={e=>setForm(f=>({...f,instructions:e.target.value}))} placeholder={"**Жирный текст** — двойные звёздочки\n[Ссылка](https://...) — кликабельная ссылка\n\n1. Скачайте инсталлятор\n2. Введите ключ активации\n3. Перезапустите DAW"} rows={6} />
+                <div style={s.hint}>Поддерживается: <code>**жирный**</code> и <code>[текст](ссылка)</code></div>
               </Row>
 
               {saveMsg && (
-                <div style={{...s.saveMsg, ...(saveMsg.startsWith('✓') ? s.saveMsgOk : s.saveMsgErr)}}>
-                  {saveMsg}
-                </div>
+                <div style={{...s.saveMsg,...(saveMsg.startsWith('✓')?s.saveMsgOk:s.saveMsgErr)}}>{saveMsg}</div>
               )}
 
-              <button style={{...s.mainBtn, ...(saving?{opacity:.7,cursor:'not-allowed'}:{})}} onClick={handleSave} disabled={saving}>
-                <span style={s.btnShine} />
-                {saving ? 'Сохраняем...' : <><i className="ti ti-device-floppy" style={{fontSize:17}} /> Сохранить код</>}
+              <button style={{...s.mainBtn,...(saving?{opacity:.7,cursor:'not-allowed'}:{})}} onClick={handleSave} disabled={saving}>
+                <span style={s.btnShine}/>
+                {saving ? 'Сохраняем...' : <><i className={`ti ti-${editId?'device-floppy':'plus'}`} style={{fontSize:17}}/> {editId ? 'Сохранить изменения' : 'Добавить код'}</>}
               </button>
             </div>
           )}
@@ -152,14 +175,18 @@ export default function Admin() {
                   {codes.map(c => (
                     <div key={c.id} style={s.codeRow}>
                       <div style={{flex:1,minWidth:0}}>
-                        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
+                        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4,flexWrap:'wrap'}}>
                           <span style={s.codeTag}>{c.code}</span>
-                          <span style={{...s.statusDot, background: c.used ? '#FCA5A5' : '#6EE7B7'}} />
-                          <span style={{fontSize:11,color:c.used?'#DC4040':'#059669'}}>{c.used ? 'использован' : 'активен'}</span>
+                          {c.infinite && <span style={s.infiniteBadge}>∞ бесконечный</span>}
+                          <span style={{...s.statusDot,background:c.used&&!c.infinite?'#FCA5A5':'#6EE7B7'}}/>
+                          <span style={{fontSize:11,color:c.used&&!c.infinite?'#DC4040':'#059669'}}>{c.used&&!c.infinite?'использован':'активен'}</span>
                         </div>
                         <div style={{fontSize:13,color:'#374151',fontWeight:500}}>{c.product_name}</div>
-                        <div style={{fontSize:12,color:'#9CA3AF'}}>{c.product_type} · {c.delivery_type === 'file' ? 'файл' : 'ключ'}</div>
+                        <div style={{fontSize:12,color:'#9CA3AF'}}>{c.product_type} · {c.delivery_type==='file'?'файл':'ключ'}</div>
                       </div>
+                      <button style={s.editBtn} onClick={()=>startEdit(c)} title="Редактировать">
+                        <i className="ti ti-edit" style={{fontSize:16}}/>
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -176,14 +203,14 @@ export default function Admin() {
 function LoginScreen({ pw, setPw, onLogin, error }) {
   return (
     <>
-      <Head><title>SoundRoom Admin</title><meta name="robots" content="noindex" /></Head>
+      <Head><title>SoundRoom Admin</title><meta name="robots" content="noindex"/></Head>
       <div style={s.bg}><div style={s.bgGrid}/><div style={{...s.bgOrb,...s.bgOrbA}}/></div>
       <main style={{...s.main,justifyContent:'center'}}>
         <div style={{...s.card,maxWidth:360,animation:'fadeUp .6s cubic-bezier(.22,1,.36,1) both'}}>
           <div style={{...s.cardTop,textAlign:'center'}}>
             <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,marginBottom:4}}>
               <div style={s.logoWrap}>
-                <svg width="24" height="24" viewBox="0 0 1777 1694" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M888.594 116L889.489 1577.81" stroke="#4C9BFF" stroke-width="232" stroke-linecap="round" stroke-linejoin="round"/><path d="M498 404L498 1290" stroke="#4C9BFF" stroke-width="232" stroke-linecap="round" stroke-linejoin="round"/><path d="M1276 404L1276 1290" stroke="#4C9BFF" stroke-width="232" stroke-linecap="round" stroke-linejoin="round"/><path d="M116 739L116 955" stroke="#4C9BFF" stroke-width="232" stroke-linecap="round" stroke-linejoin="round"/><path d="M1661 739L1661 955" stroke="#4C9BFF" stroke-width="232" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <svg width="22" height="22" viewBox="0 0 1777 1694" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M888.594 116L889.489 1577.81" stroke="#4C9BFF" stroke-width="232" stroke-linecap="round" stroke-linejoin="round"/><path d="M498 404L498 1290" stroke="#4C9BFF" stroke-width="232" stroke-linecap="round" stroke-linejoin="round"/><path d="M1276 404L1276 1290" stroke="#4C9BFF" stroke-width="232" stroke-linecap="round" stroke-linejoin="round"/><path d="M116 739L116 955" stroke="#4C9BFF" stroke-width="232" stroke-linecap="round" stroke-linejoin="round"/><path d="M1661 739L1661 955" stroke="#4C9BFF" stroke-width="232" stroke-linecap="round" stroke-linejoin="round"/></svg>
               </div>
               <span style={s.brandText}>Sound<span style={{color:'#4F8EF7'}}>Room</span></span>
             </div>
@@ -191,18 +218,10 @@ function LoginScreen({ pw, setPw, onLogin, error }) {
           </div>
           <div style={s.cardBody}>
             <div style={s.inputLabel}>Пароль</div>
-            <input
-              style={{...s.input, ...(error?{borderColor:'#FCA5A5'}:{})}}
-              type="password" value={pw}
-              onChange={e=>setPw(e.target.value)}
-              onKeyDown={e=>e.key==='Enter'&&onLogin()}
-              placeholder="Введите пароль"
-              autoFocus
-            />
+            <input style={{...s.input,...(error?{borderColor:'#FCA5A5'}:{})}} type="password" value={pw} onChange={e=>setPw(e.target.value)} onKeyDown={e=>e.key==='Enter'&&onLogin()} placeholder="Введите пароль" autoFocus />
             {error && <div style={{fontSize:13,color:'#DC4040',marginTop:8}}>Неверный пароль</div>}
             <button style={{...s.mainBtn,marginTop:14}} onClick={onLogin}>
-              <span style={s.btnShine}/>
-              <i className="ti ti-lock-open" style={{fontSize:16}}/> Войти
+              <span style={s.btnShine}/><i className="ti ti-lock-open" style={{fontSize:16}}/> Войти
             </button>
           </div>
         </div>
@@ -213,12 +232,7 @@ function LoginScreen({ pw, setPw, onLogin, error }) {
 }
 
 function Row({ label, children }) {
-  return (
-    <div style={{marginBottom:16}}>
-      <div style={s.inputLabel}>{label}</div>
-      {children}
-    </div>
-  )
+  return <div style={{marginBottom:16}}><div style={s.inputLabel}>{label}</div>{children}</div>
 }
 
 const s = {
@@ -249,7 +263,12 @@ const s = {
   saveMsg:{padding:'10px 14px',borderRadius:10,fontSize:13,fontWeight:500,marginBottom:14},
   saveMsgOk:{background:'#E6F9F2',color:'#1A7F4E',border:'1px solid #A3E9CC'},
   saveMsgErr:{background:'#FFF1F1',color:'#DC4040',border:'1px solid #FED4D4'},
-  codeRow:{background:'#F8F9FF',border:'1px solid #E5E9FF',borderRadius:14,padding:'14px 16px',display:'flex',alignItems:'center'},
+  codeRow:{background:'#F8F9FF',border:'1px solid #E5E9FF',borderRadius:14,padding:'14px 16px',display:'flex',alignItems:'center',gap:12},
   codeTag:{fontFamily:"'Courier New',monospace",fontSize:12,background:'#EEF2FF',border:'1px solid #C7D7FF',borderRadius:6,padding:'2px 8px',color:'#4F8EF7',fontWeight:600},
-  statusDot:{width:7,height:7,borderRadius:'50%',display:'inline-block'},
+  infiniteBadge:{background:'#FFF7ED',border:'1px solid #FED7AA',borderRadius:20,padding:'2px 8px',fontSize:11,fontWeight:600,color:'#C2410C'},
+  statusDot:{width:7,height:7,borderRadius:'50%',display:'inline-block',flexShrink:0},
+  editBtn:{width:36,height:36,background:'#fff',border:'1.5px solid #E5E9FF',borderRadius:10,cursor:'pointer',color:'#9CA3AF',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,transition:'all .2s'},
+  editBanner:{display:'flex',alignItems:'center',gap:8,background:'#EFF6FF',border:'1px solid #BFDBFE',borderRadius:12,padding:'10px 14px',fontSize:13,color:'#1D4ED8',marginBottom:20,flexWrap:'wrap'},
+  cancelBtn:{marginLeft:'auto',background:'none',border:'1px solid #BFDBFE',borderRadius:8,padding:'4px 10px',fontSize:12,color:'#1D4ED8',cursor:'pointer'},
+  hint:{fontSize:11,color:'#9CA3AF',marginTop:6},
 }
