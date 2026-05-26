@@ -7,8 +7,10 @@ export default async function handler(req, res) {
   const cleanCode = code.trim().toUpperCase()
   const { data, error } = await supabase.from('codes').select('*').eq('code', cleanCode).single()
   if (error || !data) return res.status(404).json({ error: 'Неверный код активации' })
-  if (data.used) return res.status(410).json({ error: 'Этот код уже был использован' })
-  await supabase.from('codes').update({ used: true, used_at: new Date().toISOString() }).eq('id', data.id)
+  if (data.used && !data.infinite) return res.status(410).json({ error: 'Этот код уже был использован' })
+  if (!data.infinite) {
+    await supabase.from('codes').update({ used: true, used_at: new Date().toISOString() }).eq('id', data.id)
+  }
   return res.status(200).json({
     product_name: data.product_name,
     product_type: data.product_type,
